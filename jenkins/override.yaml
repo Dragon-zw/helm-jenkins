@@ -6,7 +6,7 @@ controller:
   adminSecret: true
 
   adminUser: "admin"
-  adminPassword: "Fanolabs@123"
+  adminPassword: "dbISjNrHDgt0"
 
   servicePort: 8080
   targetPort: 8080
