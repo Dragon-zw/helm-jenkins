@@ -1,0 +1,155 @@
+controller:
+  componentName: "jenkins-controller"
+  image: "jenkins/jenkins"
+  tag: "2.422-jdk11"
+  imagePullPolicy: "Always"
+  adminSecret: true
+
+  adminUser: "admin"
+  adminPassword: "Fanolabs@123"
+
+  servicePort: 8080
+  targetPort: 8080
+  serviceType: ClusterIP
+
+  healthProbes: true
+  probes:
+    startupProbe:
+      httpGet:
+        path: '{{ default "" .Values.controller.jenkinsUriPrefix }}/login'
+        port: http
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 12
+    livenessProbe:
+      failureThreshold: 5
+      httpGet:
+        path: '{{ default "" .Values.controller.jenkinsUriPrefix }}/login'
+        port: http
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: '{{ default "" .Values.controller.jenkinsUriPrefix }}/login'
+        port: http
+      periodSeconds: 10
+      timeoutSeconds: 5
+  agentListenerServiceType: "ClusterIP"
+
+  installPlugins:
+    - kubernetes:3937.vd7b_82db_e347b_
+    - workflow-aggregator:596.v8c21c963d92d
+    - git:5.1.0
+    - configuration-as-code:1670.v564dc8b_982d0
+
+  initializeOnce: true
+
+  ingress:
+    enabled: true
+    paths: 
+    - backend:
+        service:
+          name: jenkins
+          port:
+            number: 8080
+      path: "/"
+      pathType: Prefix
+    apiVersion: "networking.k8s.io/v1"
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      ingress.kubernetes.io/ssl-redirect: "true"
+      ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/auth-keepalive: "75"
+      nginx.ingress.kubernetes.io/auth-snippet: |
+        proxy_set_header Host $host;
+      nginx.ingress.kubernetes.io/client-body-buffer-size: 500m
+      nginx.ingress.kubernetes.io/client-header-buffer-size: 10m
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/large-client-header-buffers: 4 10240k
+      nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+      nginx.ingress.kubernetes.io/proxy-buffer: 32 32k
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 5m
+      nginx.ingress.kubernetes.io/proxy-buffering: "on"
+      nginx.ingress.kubernetes.io/proxy-buffers-number: "16"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "1800"
+      nginx.ingress.kubernetes.io/proxy-max-temp-file-size: 1024m
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+      nginx.ingress.kubernetes.io/ssl-redirect: "false" # "true"
+      nginx.org/client-max-body-size: "1024m"
+    hostName: jenkins-registry.fano.ai
+    tls:
+    - secretName: jenkins-secret.fano.ai
+      hosts:
+        - jenkins-registry.fano.ai
+
+  prometheus:
+    enabled: true
+    scrapeInterval: 60s
+    scrapeEndpoint: /prometheus
+
+agent:
+  enabled: true
+  workspaceVolume: 
+    type: PVC
+    claimName: jenkins-workspace-pvc
+    readOnly: false
+
+persistence:
+  enabled: true
+  storageClass: "managed-nfs-storage"
+  accessMode: "ReadWriteOnce"
+  size: "8Gi"
+  volumes:
+  - name: docker
+    hostPath: 
+      path: /usr/bin/docker
+      type: File
+  - name: docker-compose
+    hostPath:
+      path: /usr/local/bin/docker-compose
+      type: File
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+      type: Socket
+  - name: containerd
+    hostPath:
+      path: /usr/local/bin/containerd
+      type: File
+  - name: containerd-sock
+    hostPath:
+      path: /var/run/containerd/containerd.sock
+      type: Socket
+  - name: helm
+    hostPath:
+      path: /usr/bin/helm
+      type: File
+  - name: kubectl
+    hostPath:
+      path: /usr/local/bin/kubectl
+      type: File
+  - name: kubernetes-config
+    hostPath:
+      path: /root/.kube/
+      type: Directory
+  mounts:
+  - name: docker
+    mountPath: /usr/bin/docker
+  - name: docker-compose
+    mountPath: /usr/local/bin/docker-compose
+  - name: docker-sock
+    mountPath: /var/run/docker.sock
+  - name: containerd
+    mountPath: /usr/local/bin/containerd
+  - name: containerd-sock
+    mountPath: /var/run/containerd/containerd.sock
+  - name: helm
+    mountPath: /usr/bin/helm
+  - name: kubectl
+    mountPath: /usr/local/bin/kubectl
+  - name: kubernetes-config
+    mountPath: /root/.kube/
+  
